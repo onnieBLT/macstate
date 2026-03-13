@@ -63,8 +63,13 @@ final class BatteryService {
         result.isCharging = dict["IsCharging"] as? Bool ?? false
         result.isPluggedIn = dict["ExternalConnected"] as? Bool ?? false
         result.voltage = dict["Voltage"] as? Int ?? 0
-        result.currentCapacity = dict["CurrentCapacity"] as? Int ?? 0
-        result.maxCapacity = dict["MaxCapacity"] as? Int ?? 1
+        // Prefer AppleRawMaxCapacity/AppleRawCurrentCapacity (always mAh).
+        // On older Intel Macs, MaxCapacity/CurrentCapacity return percentage (0-100)
+        // instead of mAh, which breaks health calculation.
+        result.currentCapacity = dict["AppleRawCurrentCapacity"] as? Int
+            ?? dict["CurrentCapacity"] as? Int ?? 0
+        result.maxCapacity = dict["AppleRawMaxCapacity"] as? Int
+            ?? dict["MaxCapacity"] as? Int ?? 1
         result.designCapacity = dict["DesignCapacity"] as? Int ?? 1
         result.cycleCount = dict["CycleCount"] as? Int ?? 0
 

@@ -12,8 +12,13 @@ final class FinderMenuToggle: ObservableObject {
     private init() {
         if UserDefaults.standard.object(forKey: defaultsKey) == nil {
             enabled = true
+            UserDefaults.standard.set(true, forKey: defaultsKey)
+            Self.activateExtensionDeferred()
         } else {
             enabled = UserDefaults.standard.bool(forKey: defaultsKey)
+            if enabled {
+                Self.activateExtensionDeferred()
+            }
         }
     }
 
@@ -25,10 +30,35 @@ final class FinderMenuToggle: ObservableObject {
             object: nil,
             userInfo: ["enabled": value]
         )
-        let action = value ? "use" : "ignore"
-        let task = Process()
-        task.launchPath = "/usr/bin/pluginkit"
-        task.arguments = ["-e", action, "-i", "com.snail007.macstate.FinderMenu"]
-        try? task.run()
+        Self.activateExtension(value)
+    }
+
+    private static func activateExtensionDeferred() {
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) {
+            activateExtension(true)
+        }
+    }
+
+    private static func activateExtension(_ enable: Bool) {
+        let bundleID = "com.snail007.macstate.FinderMenu"
+        if enable {
+            if let appexURL = Bundle.main.builtInPlugInsURL?
+                .appendingPathComponent("FinderMenu.appex") {
+                let register = Process()
+                register.launchPath = "/usr/bin/pluginkit"
+                register.arguments = ["-a", appexURL.path]
+                try? register.run()
+                register.waitUntilExit()
+            }
+            let on = Process()
+            on.launchPath = "/usr/bin/pluginkit"
+            on.arguments = ["-e", "use", "-i", bundleID]
+            try? on.run()
+        } else {
+            let task = Process()
+            task.launchPath = "/usr/bin/pluginkit"
+            task.arguments = ["-e", "ignore", "-i", bundleID]
+            try? task.run()
+        }
     }
 }

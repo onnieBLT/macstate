@@ -77,6 +77,8 @@ final class L10n: ObservableObject {
     var chargerPower: String { language == .zh ? "充电功率" : "Charging Power" }
     var adapterPower: String { language == .zh ? "充电功率" : "Charging Power" }
     var ratedPower: String { language == .zh ? "协商功率" : "Negotiated" }
+    var adapterLabel: String { language == .zh ? "适配器" : "Adapter" }
+    var notConnected: String { language == .zh ? "未连接" : "Not Connected" }
     var voltageLabel: String { language == .zh ? "电池电压" : "Battery Voltage" }
     var currentLabel: String { language == .zh ? "电池电流" : "Battery Current" }
     var batteryLevel: String { language == .zh ? "电池电量" : "Battery Level" }

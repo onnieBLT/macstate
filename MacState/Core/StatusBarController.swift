@@ -41,6 +41,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var activeTip: NSPopover?
     private var tipClickMonitor: Any?
     private var pendingBatteryIcon: String = "bolt.fill"
+    private var pendingBatteryPercent: Int = 0
     private var renderScheduled = false
 
     private var segmentRanges: [(MetricSegmentKind, ClosedRange<CGFloat>)] = []
@@ -149,6 +150,27 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         for kind in order {
             guard segmentVisibility[kind] == true else { continue }
 
+            let iconName: String
+            switch kind {
+            case .cpu: iconName = "cpu"
+            case .cpuTemp: iconName = "thermometer.medium"
+            case .memory: iconName = "memorychip"
+            case .fan: iconName = "fan"
+            case .network: iconName = "network"
+            case .battery: iconName = self.pendingBatteryIcon
+            }
+
+            var actualIconW = iconSize
+            if iconName == "_battery_custom_" {
+                actualIconW = iconSize * 1.5
+            } else if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?
+                .withSymbolConfiguration(iconConfig) {
+                let rawSize = iconImage.size
+                if rawSize.width > rawSize.height && rawSize.height > 0 {
+                    actualIconW = iconSize * rawSize.width / rawSize.height
+                }
+            }
+
             let width: CGFloat
             switch kind {
             case .network:
@@ -157,7 +179,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 let topW = (topStr as NSString).size(withAttributes: [.font: networkFont]).width
                 let bottomW = (bottomStr as NSString).size(withAttributes: [.font: networkFont]).width
                 let textW = max(topW, bottomW)
-                width = iconSize + iconTextGap + textW
+                width = actualIconW + iconTextGap + textW
             default:
                 let text: String
                 switch kind {
@@ -169,7 +191,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 default: text = ""
                 }
                 let textW = (text as NSString).size(withAttributes: [.font: metricFont]).width
-                width = iconSize + iconTextGap + textW
+                width = actualIconW + iconTextGap + textW
             }
 
             let stableWidth = ceil(max(width, maxSegmentWidths[kind] ?? 0))
@@ -204,13 +226,65 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 case .battery: iconName = self.pendingBatteryIcon
                 }
 
-                if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?
+                var actualIconW = iconSize
+
+                if iconName == "_battery_custom_" {
+                    let batteryW = iconSize * 1.5
+                    let batteryH = iconSize * 0.7
+                    let iconY = (barHeight - batteryH) / 2
+                    let bodyW = batteryW - 2
+                    let capW: CGFloat = 2
+                    let capH = batteryH * 0.4
+                    let lineW: CGFloat = 1.0
+                    let bodyRect = NSRect(x: x, y: iconY, width: bodyW, height: batteryH)
+
+                    let bodyPath = NSBezierPath(roundedRect: bodyRect, xRadius: 1.5, yRadius: 1.5)
+                    bodyPath.lineWidth = lineW
+                    NSColor.labelColor.setStroke()
+                    bodyPath.stroke()
+
+                    let capX = x + bodyW
+                    let capY = iconY + (batteryH - capH) / 2
+                    let capRect = NSRect(x: capX, y: capY, width: capW, height: capH)
+                    let capPath = NSBezierPath(roundedRect: capRect, xRadius: 0.5, yRadius: 0.5)
+                    NSColor.labelColor.setFill()
+                    capPath.fill()
+
+                    let pct = CGFloat(max(0, min(100, self.pendingBatteryPercent))) / 100.0
+                    let inset: CGFloat = lineW + 0.5
+                    let fillMaxW = bodyW - inset * 2
+                    let fillW = fillMaxW * pct
+                    if fillW > 0 {
+                        let fillRect = NSRect(
+                            x: x + inset,
+                            y: iconY + inset,
+                            width: fillW,
+                            height: batteryH - inset * 2
+                        )
+                        let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 0.5, yRadius: 0.5)
+                        NSColor.labelColor.setFill()
+                        fillPath.fill()
+                    }
+
+                    actualIconW = batteryW
+                } else if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?
                     .withSymbolConfiguration(self.iconConfig) {
-                    let iconY = (barHeight - iconSize) / 2
-                    iconImage.draw(in: NSRect(x: x, y: iconY, width: iconSize, height: iconSize))
+                    let rawSize = iconImage.size
+                    let drawW: CGFloat
+                    let drawH: CGFloat
+                    if rawSize.width > rawSize.height && rawSize.height > 0 {
+                        drawH = iconSize
+                        drawW = iconSize * rawSize.width / rawSize.height
+                    } else {
+                        drawW = iconSize
+                        drawH = iconSize
+                    }
+                    let iconY = (barHeight - drawH) / 2
+                    iconImage.draw(in: NSRect(x: x, y: iconY, width: drawW, height: drawH))
+                    actualIconW = drawW
                 }
 
-                let textX = x + iconSize + iconTextGap
+                let textX = x + actualIconW + iconTextGap
 
                 if seg.kind == .network {
                     let topStr = "↑\(self.pendingNetUpload)"
@@ -384,16 +458,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (info: BatteryInfo) in
                 guard let self else { return }
+                self.pendingBatteryPercent = info.percentage
                 if info.isCharging {
                     self.pendingBatteryIcon = "bolt.fill"
                 } else if info.isPluggedIn {
                     self.pendingBatteryIcon = "powerplug.fill"
                 } else {
-                    self.pendingBatteryIcon = "battery.25"
+                    self.pendingBatteryIcon = "_battery_custom_"
                 }
                 if info.isAvailable {
                     let w = info.adapterPowerWatts > 0 ? info.adapterPowerWatts : abs(info.powerWatts)
-                    self.pendingBattery = String(format: " %.1fW", w)
+                    self.pendingBattery = w > 0.05 ? String(format: " %.1fW", w) : " --"
                 } else {
                     self.pendingBattery = " --"
                 }
@@ -563,6 +638,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         if info.adapterPowerWatts > 0 {
             let rated = info.adapterWatts > 0 ? " (\(l.ratedPower) \(info.adapterWatts)W)" : ""
             rows.append((l.adapterPower, String(format: "%.1fW%@", info.adapterPowerWatts, rated)))
+        } else {
+            rows.append((l.adapterLabel, l.notConnected))
         }
 
         let w = info.powerWatts

@@ -20,6 +20,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var cancellables = Set<AnyCancellable>()
     private let manager: MonitorManager
 
+    private var cpuObserver: Any?
     private var cpuTempObserver: Any?
     private var memoryObserver: Any?
     private var fanObserver: Any?
@@ -71,6 +72,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     deinit {
+        if let cpuObserver { NotificationCenter.default.removeObserver(cpuObserver) }
         if let cpuTempObserver { NotificationCenter.default.removeObserver(cpuTempObserver) }
         if let memoryObserver { NotificationCenter.default.removeObserver(memoryObserver) }
         if let fanObserver { NotificationCenter.default.removeObserver(fanObserver) }
@@ -112,7 +114,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func setupInitialSegmentVisibility() {
-        segmentVisibility[.cpu] = true
+        segmentVisibility[.cpu] = CpuToggle.shared.enabled
         segmentVisibility[.cpuTemp] = CpuTempToggle.shared.enabled
         segmentVisibility[.memory] = MemoryToggle.shared.enabled
         segmentVisibility[.fan] = FanToggle.shared.enabled
@@ -152,7 +154,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
             let iconName: String
             switch kind {
-            case .cpu: iconName = "cpu"
+            case .cpu: iconName = "gauge.medium"
             case .cpuTemp: iconName = "thermometer.medium"
             case .memory: iconName = "memorychip"
             case .fan: iconName = "fan"
@@ -218,7 +220,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             for seg in segments {
                 let iconName: String
                 switch seg.kind {
-                case .cpu: iconName = "cpu"
+                case .cpu: iconName = "cpu.fill"
                 case .cpuTemp: iconName = "thermometer.medium"
                 case .memory: iconName = "memorychip"
                 case .fan: iconName = "fan"
@@ -337,6 +339,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     // MARK: - Toggle Visibility
 
     private func observeToggleNotifications() {
+        cpuObserver = NotificationCenter.default.addObserver(
+            forName: CpuToggle.changedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self, let enabled = notification.userInfo?["enabled"] as? Bool else { return }
+            self.setVisibility(enabled, for: .cpu)
+        }
+
         cpuTempObserver = NotificationCenter.default.addObserver(
             forName: CpuTempToggle.changedNotification,
             object: nil,
@@ -384,7 +395,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func setVisibility(_ visible: Bool, for kind: MetricSegmentKind) {
-        guard kind != .cpu else { return }
         segmentVisibility[kind] = visible
         maxSegmentWidths[kind] = nil
         scheduleRender()

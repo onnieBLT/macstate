@@ -23,6 +23,7 @@ SOURCES=(
     MacState/Core/NetworkService.swift
     MacState/Core/MonitorManager.swift
     MacState/Core/CpuTempToggle.swift
+    MacState/Core/CpuToggle.swift
     MacState/Core/MemoryToggle.swift
     MacState/Core/FanToggle.swift
     MacState/Core/NetworkToggle.swift

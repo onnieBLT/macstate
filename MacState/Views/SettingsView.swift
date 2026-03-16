@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var l10n: L10n = L10n.shared
     @StateObject private var loginService = LaunchAtLoginService.shared
+    @ObservedObject private var cpuToggle = CpuToggle.shared
     @ObservedObject private var cpuTempToggle = CpuTempToggle.shared
     @ObservedObject private var memoryToggle = MemoryToggle.shared
     @ObservedObject private var fanToggle = FanToggle.shared
@@ -38,6 +39,17 @@ struct SettingsView: View {
             Text(l10n.modules)
                 .font(.subheadline.bold())
                 .foregroundColor(.secondary)
+
+            HStack(spacing: 8) {
+                Image(systemName: "cpu.fill")
+                    .frame(width: 20, alignment: .center)
+                Text(l10n.moduleName(.cpuUsage))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                AppKitSwitch(label: "cpu", isOn: cpuToggle.enabled) { newValue in
+                    CpuToggle.shared.setEnabled(newValue)
+                }
+                .frame(width: 38, height: 22)
+            }
 
             HStack(spacing: 8) {
                 Image(systemName: "thermometer.medium")

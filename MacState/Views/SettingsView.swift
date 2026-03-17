@@ -16,7 +16,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(l10n.appName)
+                Text("\(l10n.appName) v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")(\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
                     .font(.headline)
                 Spacer()
                 Button(action: {

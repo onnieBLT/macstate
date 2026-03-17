@@ -76,13 +76,22 @@ final class BatteryService {
         if let batteryData = dict["BatteryData"] as? [String: Any],
            let uiSoc = batteryData["UISoc"] as? Int {
             result.uiPercentage = uiSoc
+        } else {
+            let psInfo = IOPSCopyPowerSourcesInfo().takeRetainedValue()
+            let psList = IOPSCopyPowerSourcesList(psInfo).takeRetainedValue() as [CFTypeRef]
+            for ps in psList {
+                if let desc = IOPSGetPowerSourceDescription(psInfo, ps)?.takeUnretainedValue() as? [String: Any],
+                   let cap = desc["Current Capacity"] as? Int {
+                    result.uiPercentage = cap
+                    break
+                }
+            }
         }
 
-        // IOKit stores amperage as UInt64 wrapping a signed Int16
-        if let raw = dict["InstantAmperage"] as? Int {
-            result.amperage = Int(Int16(truncatingIfNeeded: raw))
-        } else if let raw = dict["Amperage"] as? Int {
-            result.amperage = Int(Int16(truncatingIfNeeded: raw))
+        if let n = dict["InstantAmperage"] as? NSNumber {
+            result.amperage = Int(Int16(truncatingIfNeeded: n.int64Value))
+        } else if let n = dict["Amperage"] as? NSNumber {
+            result.amperage = Int(Int16(truncatingIfNeeded: n.int64Value))
         }
 
         if let adapterDetails = dict["AdapterDetails"] as? [String: Any] {

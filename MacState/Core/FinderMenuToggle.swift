@@ -11,9 +11,8 @@ final class FinderMenuToggle: ObservableObject {
 
     private init() {
         if UserDefaults.standard.object(forKey: defaultsKey) == nil {
-            enabled = true
-            UserDefaults.standard.set(true, forKey: defaultsKey)
-            Self.activateExtensionDeferred()
+            enabled = false
+            UserDefaults.standard.set(false, forKey: defaultsKey)
         } else {
             enabled = UserDefaults.standard.bool(forKey: defaultsKey)
             if enabled {

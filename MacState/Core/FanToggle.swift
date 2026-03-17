@@ -11,7 +11,7 @@ final class FanToggle: ObservableObject {
 
     private init() {
         if UserDefaults.standard.object(forKey: defaultsKey) == nil {
-            enabled = true
+            enabled = false
         } else {
             enabled = UserDefaults.standard.bool(forKey: defaultsKey)
         }

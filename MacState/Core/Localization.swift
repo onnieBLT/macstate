@@ -99,8 +99,10 @@ final class L10n: ObservableObject {
 
     // MARK: - 能耗排行
     var energyRanking: String { language == .zh ? "能耗排行" : "Energy Ranking" }
-    var discreteGPU: String { language == .zh ? "独显" : "Discrete" }
-    var integratedGPU: String { language == .zh ? "集显" : "Integrated" }
+    var discreteGPU: String { language == .zh ? "独立显卡" : "Discrete" }
+    var integratedGPU: String { language == .zh ? "集成显卡" : "Integrated" }
+    var usageLabel: String { language == .zh ? "使用率" : "Usage" }
+    var temperatureLabel: String { language == .zh ? "温度" : "Temp" }
 
     // MARK: - 设置面板
     var refreshInterval: String { language == .zh ? "刷新间隔" : "Refresh Interval" }

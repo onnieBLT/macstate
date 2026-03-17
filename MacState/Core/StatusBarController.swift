@@ -242,7 +242,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 case .network: iconName = "network"
                 case .battery: iconName = self.pendingBatteryIcon
                 case .gpu: iconName = "display"
-                case .gpuTemp: iconName = "thermometer.medium"
+                case .gpuTemp: iconName = "thermometer.sun.fill"
                 }
 
                 var actualIconW = iconSize
@@ -673,7 +673,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             showSimpleTooltip(text: "\(L10n.shared.moduleName(.gpuUsage)): N/A", button: button, rect: rect)
             return
         }
-        let parts = gpus.map { "\(localizedGpuLabel($0.name)): \(String(format: "%.0f%%", $0.usage))" }
+        let l = L10n.shared
+        let parts = gpus.map { "\(localizedGpuLabel($0.name))\(l.usageLabel): \(String(format: "%.0f%%", $0.usage))" }
         showSimpleTooltip(text: parts.joined(separator: "\n"), button: button, rect: rect)
     }
 
@@ -684,7 +685,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             showSimpleTooltip(text: "\(L10n.shared.moduleName(.gpuTemp)): N/A", button: button, rect: rect)
             return
         }
-        let parts = temps.map { "\(localizedGpuLabel($0.label)): \(String(format: "%.0f°C", $0.temp))" }
+        let l = L10n.shared
+        let parts = temps.map { "\(localizedGpuLabel($0.label))\(l.temperatureLabel): \(String(format: "%.0f°C", $0.temp))" }
         showSimpleTooltip(text: parts.joined(separator: "\n"), button: button, rect: rect)
     }
 

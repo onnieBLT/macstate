@@ -53,6 +53,10 @@ final class L10n: ObservableObject {
             return language == .zh ? "网络速度" : "Network Speed"
         case .battery:
             return language == .zh ? "充电功率" : "Charging Power"
+        case .gpuUsage:
+            return language == .zh ? "GPU 使用率" : "GPU Usage"
+        case .gpuTemp:
+            return language == .zh ? "GPU 温度" : "GPU Temperature"
         }
     }
 
@@ -95,6 +99,8 @@ final class L10n: ObservableObject {
 
     // MARK: - 能耗排行
     var energyRanking: String { language == .zh ? "能耗排行" : "Energy Ranking" }
+    var discreteGPU: String { language == .zh ? "独显" : "Discrete" }
+    var integratedGPU: String { language == .zh ? "集显" : "Integrated" }
 
     // MARK: - 设置面板
     var refreshInterval: String { language == .zh ? "刷新间隔" : "Refresh Interval" }

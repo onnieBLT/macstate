@@ -44,6 +44,9 @@ SOURCES=(
     MacState/Core/IP2RegionService.swift
     MacState/Core/FinderMenuToggle.swift
     MacState/Core/EnergyService.swift
+    MacState/Core/GPUService.swift
+    MacState/Core/GpuToggle.swift
+    MacState/Core/GpuTempToggle.swift
     MacState/Views/AppKitSwitch.swift
     MacState/Views/PopoverView.swift
     MacState/Views/SettingsView.swift

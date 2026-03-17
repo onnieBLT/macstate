@@ -9,6 +9,8 @@ struct SettingsView: View {
     @ObservedObject private var fanToggle = FanToggle.shared
     @ObservedObject private var networkToggle = NetworkToggle.shared
     @ObservedObject private var batteryToggle = BatteryToggle.shared
+    @ObservedObject private var gpuToggle = GpuToggle.shared
+    @ObservedObject private var gpuTempToggle = GpuTempToggle.shared
     @ObservedObject private var finderMenuToggle = FinderMenuToggle.shared
 
     let manager: MonitorManager
@@ -103,6 +105,30 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     AppKitSwitch(label: "battery", isOn: batteryToggle.enabled) { newValue in
                         BatteryToggle.shared.setEnabled(newValue)
+                    }
+                    .frame(width: 38, height: 22)
+                }
+            }
+
+            if GPUService.hasGPU {
+                HStack(spacing: 8) {
+                    Image(systemName: "display")
+                        .frame(width: 20, alignment: .center)
+                    Text(l10n.moduleName(.gpuUsage))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    AppKitSwitch(label: "gpu", isOn: gpuToggle.enabled) { newValue in
+                        GpuToggle.shared.setEnabled(newValue)
+                    }
+                    .frame(width: 38, height: 22)
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "thermometer.sun.fill")
+                        .frame(width: 20, alignment: .center)
+                    Text(l10n.moduleName(.gpuTemp))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    AppKitSwitch(label: "gpuTemp", isOn: gpuTempToggle.enabled) { newValue in
+                        GpuTempToggle.shared.setEnabled(newValue)
                     }
                     .frame(width: 38, height: 22)
                 }

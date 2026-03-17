@@ -9,6 +9,8 @@ private enum MetricSegmentKind: CaseIterable {
     case fan
     case network
     case battery
+    case gpu
+    case gpuTemp
 }
 
 @MainActor
@@ -26,6 +28,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var fanObserver: Any?
     private var networkObserver: Any?
     private var batteryObserver: Any?
+    private var gpuObserver: Any?
+    private var gpuTempObserver: Any?
 
     private var hostingController: NSHostingController<PopoverView>?
 
@@ -39,6 +43,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var pendingNetUpload: String = " --"
     private var pendingNetDownload: String = " --"
     private var pendingBattery: String = " --"
+    private var pendingGpu: String = " --"
+    private var pendingGpuTemp: String = " --"
     private var activeTip: NSPopover?
     private var tipClickMonitor: Any?
     private var pendingBatteryIcon: String = "bolt.fill"
@@ -79,6 +85,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         if let fanObserver { NotificationCenter.default.removeObserver(fanObserver) }
         if let networkObserver { NotificationCenter.default.removeObserver(networkObserver) }
         if let batteryObserver { NotificationCenter.default.removeObserver(batteryObserver) }
+        if let gpuObserver { NotificationCenter.default.removeObserver(gpuObserver) }
+        if let gpuTempObserver { NotificationCenter.default.removeObserver(gpuTempObserver) }
     }
 
     // MARK: - Setup
@@ -121,6 +129,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         segmentVisibility[.fan] = FanToggle.shared.enabled
         segmentVisibility[.network] = NetworkToggle.shared.enabled
         segmentVisibility[.battery] = BatteryService.hasBattery && BatteryToggle.shared.enabled
+        segmentVisibility[.gpu] = GPUService.hasGPU && GpuToggle.shared.enabled
+        segmentVisibility[.gpuTemp] = GPUService.hasGPU && GpuTempToggle.shared.enabled
     }
 
     private func scheduleRender() {
@@ -139,7 +149,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         let iconSize: CGFloat = 12
         let iconTextGap: CGFloat = 2
 
-        let order: [MetricSegmentKind] = [.network, .memory, .cpu, .cpuTemp, .fan, .battery]
+        let order: [MetricSegmentKind] = [.network, .memory, .cpu, .cpuTemp, .fan, .battery, .gpu, .gpuTemp]
 
         struct SegmentInfo {
             let kind: MetricSegmentKind
@@ -161,6 +171,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             case .fan: iconName = "fan"
             case .network: iconName = "network"
             case .battery: iconName = self.pendingBatteryIcon
+            case .gpu: iconName = "display"
+            case .gpuTemp: iconName = "thermometer.sun.fill"
             }
 
             var actualIconW = iconSize
@@ -191,6 +203,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 case .memory: text = pendingMemory
                 case .fan: text = pendingFan
                 case .battery: text = pendingBattery
+                case .gpu: text = pendingGpu
+                case .gpuTemp: text = pendingGpuTemp
                 default: text = ""
                 }
                 let textW = (text as NSString).size(withAttributes: [.font: metricFont]).width
@@ -227,6 +241,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 case .fan: iconName = "fan"
                 case .network: iconName = "network"
                 case .battery: iconName = self.pendingBatteryIcon
+                case .gpu: iconName = "display"
+                case .gpuTemp: iconName = "thermometer.medium"
                 }
 
                 var actualIconW = iconSize
@@ -312,6 +328,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     case .memory: text = self.pendingMemory
                     case .fan: text = self.pendingFan
                     case .battery: text = self.pendingBattery
+                    case .gpu: text = self.pendingGpu
+                    case .gpuTemp: text = self.pendingGpuTemp
                     default: text = ""
                     }
                     let attrs: [NSAttributedString.Key: Any] = [
@@ -392,6 +410,24 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         ) { [weak self] notification in
             guard let self, let enabled = notification.userInfo?["enabled"] as? Bool else { return }
             self.setVisibility(BatteryService.hasBattery && enabled, for: .battery)
+        }
+
+        gpuObserver = NotificationCenter.default.addObserver(
+            forName: GpuToggle.changedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self, let enabled = notification.userInfo?["enabled"] as? Bool else { return }
+            self.setVisibility(GPUService.hasGPU && enabled, for: .gpu)
+        }
+
+        gpuTempObserver = NotificationCenter.default.addObserver(
+            forName: GpuTempToggle.changedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self, let enabled = notification.userInfo?["enabled"] as? Bool else { return }
+            self.setVisibility(GPUService.hasGPU && enabled, for: .gpuTemp)
         }
     }
 
@@ -486,6 +522,26 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self.scheduleRender()
             }
             .store(in: &cancellables)
+
+        manager.$gpuUsage
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] value in
+                guard let self else { return }
+                self.pendingGpu = value >= 0 ? String(format: " %.0f%%", value) : " --"
+                self.scheduleRender()
+            }
+            .store(in: &cancellables)
+
+        manager.$gpuTemp
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] value in
+                guard let self else { return }
+                self.pendingGpuTemp = value > 0 ? String(format: " %.0f\u{00B0}", value) : " --"
+                self.scheduleRender()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Language Change
@@ -562,6 +618,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             showNetworkTooltip(button: button)
         case .battery:
             showBatteryTooltip(button: button, kind: kind)
+        case .gpu:
+            showGpuTooltip(button: button, kind: kind)
+        case .gpuTemp:
+            showGpuTempTooltip(button: button, kind: kind)
         }
     }
 
@@ -602,18 +662,47 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         NetworkProcessPanel.shared.toggle(upload: s.uploadFormatted, download: s.downloadFormatted)
     }
 
+    private func localizedGpuLabel(_ key: String) -> String {
+        key == "discrete" ? L10n.shared.discreteGPU : L10n.shared.integratedGPU
+    }
+
+    private func showGpuTooltip(button: NSStatusBarButton, kind: MetricSegmentKind) {
+        let gpus = GPUService.shared.allGPUUsages()
+        let rect = segmentRect(for: kind, in: button)
+        if gpus.isEmpty {
+            showSimpleTooltip(text: "\(L10n.shared.moduleName(.gpuUsage)): N/A", button: button, rect: rect)
+            return
+        }
+        let parts = gpus.map { "\(localizedGpuLabel($0.name)): \(String(format: "%.0f%%", $0.usage))" }
+        showSimpleTooltip(text: parts.joined(separator: "\n"), button: button, rect: rect)
+    }
+
+    private func showGpuTempTooltip(button: NSStatusBarButton, kind: MetricSegmentKind) {
+        let temps = GPUService.shared.allGPUTemperatures()
+        let rect = segmentRect(for: kind, in: button)
+        if temps.isEmpty {
+            showSimpleTooltip(text: "\(L10n.shared.moduleName(.gpuTemp)): N/A", button: button, rect: rect)
+            return
+        }
+        let parts = temps.map { "\(localizedGpuLabel($0.label)): \(String(format: "%.0f°C", $0.temp))" }
+        showSimpleTooltip(text: parts.joined(separator: "\n"), button: button, rect: rect)
+    }
+
     private func showSimpleTooltip(text: String, button: NSStatusBarButton, rect: NSRect) {
         dismissActiveTip()
 
         let tip = NSPopover()
         tip.behavior = .applicationDefined
         tip.animates = true
-        tip.contentSize = NSSize(width: 200, height: 40)
         let label = NSTextField(labelWithString: text)
         label.font = NSFont.systemFont(ofSize: 12)
         label.alignment = .center
+        label.maximumNumberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 40))
+        let lineCount = max(text.components(separatedBy: "\n").count, 1)
+        let height = CGFloat(lineCount * 18 + 16)
+        tip.contentSize = NSSize(width: 200, height: height)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: height))
         container.addSubview(label)
         NSLayoutConstraint.activate([
             label.centerXAnchor.constraint(equalTo: container.centerXAnchor),

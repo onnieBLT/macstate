@@ -18,6 +18,8 @@ enum ModuleType: String, CaseIterable, Identifiable {
     case fan = "fan"
     case network = "network"
     case battery = "battery"
+    case gpuUsage = "gpu_usage"
+    case gpuTemp = "gpu_temp"
 
     var id: String { rawValue }
 
@@ -38,6 +40,8 @@ final class MonitorManager: ObservableObject {
     @Published var fanSpeeds: [(current: Double, min: Double, max: Double)] = []
     @Published var networkSpeed = NetworkSpeed(upload: 0, download: 0)
     @Published var batteryInfo = BatteryInfo()
+    @Published var gpuUsage: Double = -1
+    @Published var gpuTemp: Double = 0
 
     @Published var refreshInterval: TimeInterval = 3.0
 
@@ -84,6 +88,8 @@ final class MonitorManager: ObservableObject {
         let fanEnabled = FanToggle.shared.enabled
         let networkEnabled = NetworkToggle.shared.enabled
         let batteryEnabled = BatteryToggle.shared.enabled
+        let gpuEnabled = GpuToggle.shared.enabled
+        let gpuTempEnabled = GpuTempToggle.shared.enabled
 
         workQueue.async { [weak self] in
             let cpu = CPUService.shared.totalUsage()
@@ -92,6 +98,8 @@ final class MonitorManager: ObservableObject {
             let fans = fanEnabled ? SMCService.shared.allFanSpeeds() : nil
             let net = networkEnabled ? NetworkService.shared.currentSpeed() : nil
             let bat = batteryEnabled ? BatteryService.shared.info() : nil
+            let gpu = gpuEnabled ? GPUService.shared.gpuUsage() : -1.0
+            let gpuT = gpuTempEnabled ? GPUService.shared.gpuTemperature() ?? 0 : 0.0
 
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -117,6 +125,8 @@ final class MonitorManager: ObservableObject {
                         self.batteryInfo = bat
                     }
                 }
+                if gpuEnabled && Int(self.gpuUsage) != Int(gpu) { self.gpuUsage = gpu }
+                if gpuTempEnabled && Int(self.gpuTemp) != Int(gpuT) { self.gpuTemp = gpuT }
             }
         }
     }

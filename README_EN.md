@@ -28,6 +28,8 @@ Lightweight macOS menu bar system monitor. All metrics are merged into a single 
 - **Fan Speed** — Multi-fan RPM display
 - **Network Speed** — Upload/download in compact two-line layout, auto unit scaling, click to show Top 10 network processes
 - **Process Panel** — Sortable columns, full command line view, IP geolocation (offline database, zero network dependency)
+- **GPU Usage** — Multi-GPU support (integrated/discrete), status bar shows peak utilization, tooltip shows per-GPU usage
+- **GPU Temperature** — IOAccelerator + SMC readout, tooltip shows per-GPU temperature
 - **Charging Power** — Real-time charger wattage, click for battery details (charger info, battery power, current, voltage, level, cycle count, health)
 - **Dedicated Settings Entry** — Persistent settings icon in menu bar, click to open settings panel
 - **Chinese/English** — Default Chinese, switchable, panel titles and content update in real-time
@@ -85,6 +87,7 @@ MacState/
 │   ├── MemoryService.swift          # Memory info
 │   ├── NetworkService.swift         # Network speed
 │   ├── BatteryService.swift         # Battery & charging power
+│   ├── GPUService.swift             # GPU usage & temperature (IOAccelerator + SMC)
 │   ├── ProcessCPUService.swift      # Top CPU processes
 │   ├── ProcessMemoryService.swift   # Top memory processes
 │   ├── ProcessNetworkService.swift  # Top network processes
@@ -99,6 +102,14 @@ MacState/
 │   ├── Localization.swift           # Chinese/English localization
 │   ├── LaunchAtLoginService.swift   # Launch at login
 │   ├── FinderMenuToggle.swift       # Finder context menu toggle
+│   ├── CpuToggle.swift              # CPU usage toggle
+│   ├── CpuTempToggle.swift          # CPU temperature toggle
+│   ├── MemoryToggle.swift           # Memory module toggle
+│   ├── FanToggle.swift              # Fan module toggle
+│   ├── NetworkToggle.swift          # Network module toggle
+│   ├── BatteryToggle.swift          # Battery module toggle
+│   ├── GpuToggle.swift              # GPU usage toggle
+│   ├── GpuTempToggle.swift          # GPU temperature toggle
 │   └── PrivilegeService.swift       # Privilege management
 ├── Extensions/
 │   ├── FinderMenuSync.swift         # FinderSync extension (context menu)
@@ -107,7 +118,8 @@ MacState/
 │   └── main.swift                   # Extension entry point
 ├── Views/
 │   ├── SettingsView.swift           # Settings panel
-│   └── PopoverView.swift            # Popover container
+│   ├── PopoverView.swift            # Popover container
+│   └── AppKitSwitch.swift           # AppKit switch component
 ├── Vendor/
 │   └── ip2region/                   # ip2region C library
 ├── Resources/
@@ -127,6 +139,8 @@ MacState/
 | Memory | `host_statistics64` |
 | Network Speed | `sysctl` `NET_RT_IFLIST2` |
 | Charging Power | IOKit `AppleSmartBattery` + SMC `PDTR` |
+| GPU Usage | IOKit IOAccelerator `PerformanceStatistics` |
+| GPU Temperature | IOAccelerator `Temperature(C)` + SMC fallback (`TGDD`/`TCGC`) |
 | Process Info | `libproc` (`proc_pidinfo`, `proc_pidfdinfo`) |
 | IP Geolocation | ip2region offline database |
 | Finder Context Menu | FinderSync extension + DistributedNotificationCenter |

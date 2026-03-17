@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.4.0] - 2026-03-17
+
+### 新增 / Added
+
+- **GPU 使用率** — IOKit IOAccelerator 读取，支持多 GPU（集成显卡/独立显卡），状态栏显示最大利用率，tooltip 分行显示每个 GPU 的使用率
+- **GPU 温度** — IOAccelerator PerformanceStatistics 读取，fallback SMC（AMD→TGDD，Intel→TCGC），tooltip 分行显示每个 GPU 的温度
+- **GPU 开关** — 设置面板新增 GPU 使用率和 GPU 温度两个独立开关
+
+### 优化 / Improved
+
+- **默认开关调整** — 首次安装仅开启 CPU 使用率和网络速度，其余模块默认关闭，减少初始状态栏占用
+- **图标区分度** — GPU 温度使用 `thermometer.sun.fill`，与 CPU 温度 `thermometer.medium` 区分
+
+---
+
 ## [v1.3.1] - 2026-03-17
 
 ### 新增 / Added

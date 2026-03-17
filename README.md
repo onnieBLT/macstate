@@ -28,6 +28,8 @@
 - **风扇转速** — 支持多风扇 RPM 显示
 - **网络速度** — 上传/下载两行紧凑显示，自动单位换算，点击弹出 Top 10 网络进程排行
 - **进程排行面板** — 支持列头排序、完整命令行查看、IP 归属地（离线数据库，0 网络依赖）
+- **GPU 使用率** — 支持多 GPU（集成显卡/独立显卡），状态栏显示最大利用率，tooltip 分行显示各 GPU 使用率
+- **GPU 温度** — IOAccelerator + SMC 读取，tooltip 分行显示各 GPU 温度
 - **充电功率** — 充电器总功率实时显示，点击查看电池详情（充电器规格、电池功率、电流、电压、电量、循环次数、健康度）
 - **独立设置入口** — 状态栏常驻设置图标，点击打开设置面板
 - **中文/英文** — 默认中文，可切换，面板标题和内容实时跟随语言切换
@@ -84,8 +86,9 @@ MacState/
 │   ├── CPUService.swift             # CPU 使用率
 │   ├── MemoryService.swift          # 内存信息
 │   ├── NetworkService.swift         # 网络速度
-│   ├── BatteryService.swift         # 电池与充电功率
-│   ├── ProcessCPUService.swift      # Top CPU 进程
+│   ├── BatteryService.swift           # 电池与充电功率
+│   ├── GPUService.swift               # GPU 使用率与温度（IOAccelerator + SMC）
+│   ├── ProcessCPUService.swift        # Top CPU 进程
 │   ├── ProcessMemoryService.swift   # Top 内存进程
 │   ├── ProcessNetworkService.swift  # Top 网络进程
 │   ├── ConnectionService.swift      # 进程连接枚举（TCP/UDP）
@@ -99,6 +102,14 @@ MacState/
 │   ├── Localization.swift           # 中英文国际化
 │   ├── LaunchAtLoginService.swift   # 开机自启动
 │   ├── FinderMenuToggle.swift       # Finder 右键菜单开关
+│   ├── CpuToggle.swift              # CPU 使用率开关
+│   ├── CpuTempToggle.swift          # CPU 温度开关
+│   ├── MemoryToggle.swift           # 内存模块开关
+│   ├── FanToggle.swift              # 风扇模块开关
+│   ├── NetworkToggle.swift          # 网络模块开关
+│   ├── BatteryToggle.swift          # 电池模块开关
+│   ├── GpuToggle.swift              # GPU 使用率开关
+│   ├── GpuTempToggle.swift          # GPU 温度开关
 │   └── PrivilegeService.swift       # 权限管理
 ├── Extensions/
 │   ├── FinderMenuSync.swift         # FinderSync 扩展（右键菜单）
@@ -107,7 +118,8 @@ MacState/
 │   └── main.swift                   # 扩展入口
 ├── Views/
 │   ├── SettingsView.swift           # 设置面板
-│   └── PopoverView.swift            # Popover 容器
+│   ├── PopoverView.swift            # Popover 容器
+│   └── AppKitSwitch.swift           # AppKit 开关组件
 ├── Vendor/
 │   └── ip2region/                   # ip2region C 库
 ├── Resources/
@@ -127,6 +139,8 @@ MacState/
 | 内存 | `host_statistics64` |
 | 网络速度 | `sysctl` `NET_RT_IFLIST2` |
 | 充电功率 | IOKit `AppleSmartBattery` + SMC `PDTR` |
+| GPU 使用率 | IOKit IOAccelerator `PerformanceStatistics` |
+| GPU 温度 | IOAccelerator `Temperature(C)` + SMC fallback (`TGDD`/`TCGC`) |
 | 进程信息 | `libproc` (`proc_pidinfo`, `proc_pidfdinfo`) |
 | IP 归属地 | ip2region 离线数据库 |
 | Finder 右键菜单 | FinderSync 扩展 + DistributedNotificationCenter |

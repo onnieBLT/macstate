@@ -44,6 +44,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var pendingBatteryIcon: String = "bolt.fill"
     private var pendingBatteryPercent: Int = 0
     private var renderScheduled = false
+    private var energyRefreshTimer: Timer?
 
     private var segmentRanges: [(MetricSegmentKind, ClosedRange<CGFloat>)] = []
 
@@ -706,13 +707,105 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             ])
         }
 
-        if let lastLabel = labels.last {
-            lastLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10).isActive = true
+        let energySep = NSBox()
+        energySep.boxType = .separator
+        energySep.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(energySep)
+
+        let energyTitle = NSTextField(labelWithString: "⚡ \(l.energyRanking)")
+        energyTitle.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        energyTitle.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(energyTitle)
+
+        let lastLbl = labels.last!
+        NSLayoutConstraint.activate([
+            energySep.topAnchor.constraint(equalTo: lastLbl.bottomAnchor, constant: 8),
+            energySep.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            energySep.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            energyTitle.topAnchor.constraint(equalTo: energySep.bottomAnchor, constant: 6),
+            energyTitle.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+        ])
+
+        var energyIconViews: [NSImageView] = []
+        var energyNameFields: [NSTextField] = []
+        var energyRows: [NSView] = []
+        var prevAnchor: NSLayoutYAxisAnchor = energyTitle.bottomAnchor
+
+        for _ in 0..<3 {
+            let row = NSView()
+            row.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(row)
+
+            let iconView = NSImageView()
+            iconView.translatesAutoresizingMaskIntoConstraints = false
+            iconView.imageScaling = .scaleProportionallyUpOrDown
+            row.addSubview(iconView)
+
+            let nameField = NSTextField(labelWithString: "")
+            nameField.font = labelFont
+            nameField.translatesAutoresizingMaskIntoConstraints = false
+            nameField.lineBreakMode = .byTruncatingTail
+            row.addSubview(nameField)
+
+            NSLayoutConstraint.activate([
+                row.topAnchor.constraint(equalTo: prevAnchor, constant: 4),
+                row.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+                row.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+                row.heightAnchor.constraint(equalToConstant: 18),
+                iconView.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+                iconView.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                iconView.widthAnchor.constraint(equalToConstant: 14),
+                iconView.heightAnchor.constraint(equalToConstant: 14),
+                nameField.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 4),
+                nameField.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                nameField.trailingAnchor.constraint(lessThanOrEqualTo: row.trailingAnchor),
+            ])
+
+            energyIconViews.append(iconView)
+            energyNameFields.append(nameField)
+            energyRows.append(row)
+            prevAnchor = row.bottomAnchor
         }
 
-        let rowCount = CGFloat(rows.count)
-        let height = 10 + rowCount * 18 + (rowCount - 1) * 4 + 10
-        tip.contentSize = NSSize(width: max(220, totalW), height: height)
+        let bottomSpacer = NSView()
+        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(bottomSpacer)
+        NSLayoutConstraint.activate([
+            bottomSpacer.topAnchor.constraint(equalTo: prevAnchor),
+            bottomSpacer.heightAnchor.constraint(equalToConstant: 10),
+            bottomSpacer.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            bottomSpacer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        ])
+
+        func updateEnergyRows() {
+            let procs = EnergyService.shared.topProcesses(limit: 3)
+            let hasData = !procs.isEmpty
+            energySep.isHidden = !hasData
+            energyTitle.isHidden = !hasData
+            for i in 0..<3 {
+                if i < procs.count {
+                    energyIconViews[i].image = procs[i].icon
+                    energyNameFields[i].stringValue = "\(i + 1). \(procs[i].name)"
+                    energyRows[i].isHidden = false
+                } else {
+                    energyRows[i].isHidden = true
+                }
+            }
+        }
+
+        updateEnergyRows()
+
+        let basicHeight: CGFloat = 10 + CGFloat(rows.count) * 18 + CGFloat(rows.count - 1) * 4
+        let energyHeight: CGFloat = 99
+        let height: CGFloat = basicHeight + energyHeight + 10
+        tip.contentSize = NSSize(width: max(260, totalW), height: height)
+
+        energyRefreshTimer?.invalidate()
+        energyRefreshTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard self?.activeTip != nil else { return }
+            updateEnergyRows()
+        }
+
         let vc = NSViewController()
         vc.view = container
         tip.contentViewController = vc
@@ -722,6 +815,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func dismissActiveTip() {
+        energyRefreshTimer?.invalidate()
+        energyRefreshTimer = nil
         if let monitor = tipClickMonitor {
             NSEvent.removeMonitor(monitor)
             tipClickMonitor = nil

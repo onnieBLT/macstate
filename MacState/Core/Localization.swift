@@ -93,6 +93,9 @@ final class L10n: ObservableObject {
     var viewButton: String { language == .zh ? "查看" : "View" }
     var geoLocation: String { language == .zh ? "归属地" : "Location" }
 
+    // MARK: - 能耗排行
+    var energyRanking: String { language == .zh ? "能耗排行" : "Energy Ranking" }
+
     // MARK: - 设置面板
     var refreshInterval: String { language == .zh ? "刷新间隔" : "Refresh Interval" }
     var general: String { language == .zh ? "通用" : "General" }

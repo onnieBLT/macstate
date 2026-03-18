@@ -271,7 +271,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     NSColor.labelColor.setFill()
                     capPath.fill()
 
-                    // Black fill
+                    // Fill and text colors adapt to dark/light mode
+                    let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                    let fillColor: NSColor = isDark ? .white : .black
+                    let textColor: NSColor = isDark ? .black : .white
+
                     let pct = CGFloat(max(0, min(100, self.pendingBatteryPercent))) / 100.0
                     let inset: CGFloat = lineW + 0.5
                     let fillMaxW = bodyW - inset * 2
@@ -279,24 +283,41 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     if fillW > 0 {
                         let fillRect = NSRect(x: x + inset, y: iconY + inset, width: fillW, height: batteryH - inset * 2)
                         let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2)
-                        NSColor.black.setFill()
+                        fillColor.setFill()
                         fillPath.fill()
                     }
 
-                    // White percentage number centered inside battery
+                    // Percentage number: split rendering so text is always readable.
+                    // Over filled area → textColor (contrasts with fill).
+                    // Over unfilled area → fillColor (contrasts with background).
                     let pctText = "\(self.pendingBatteryPercent)"
-                    let pctFont = NSFont.monospacedDigitSystemFont(ofSize: round(batteryH * 0.62), weight: .bold)
-                    let textAttrs: [NSAttributedString.Key: Any] = [.font: pctFont, .foregroundColor: NSColor.white]
-                    let textSize = (pctText as NSString).size(withAttributes: textAttrs)
+                    let pctFont = NSFont.monospacedDigitSystemFont(ofSize: round(batteryH * 0.80), weight: .bold)
+                    let textSize = (pctText as NSString).size(withAttributes: [.font: pctFont])
                     let textOrigin = NSPoint(
                         x: x + (bodyW - textSize.width) / 2,
                         y: iconY + (batteryH - textSize.height) / 2
                     )
-                    (pctText as NSString).draw(at: textOrigin, withAttributes: textAttrs)
+                    let fillEndX = x + inset + fillW
+                    if let cgCtx = NSGraphicsContext.current?.cgContext {
+                        // Over filled area
+                        if fillW > 0 {
+                            cgCtx.saveGState()
+                            cgCtx.clip(to: CGRect(x: x, y: iconY, width: fillEndX - x, height: batteryH))
+                            (pctText as NSString).draw(at: textOrigin, withAttributes: [.font: pctFont, .foregroundColor: textColor])
+                            cgCtx.restoreGState()
+                        }
+                        // Over unfilled area
+                        if fillEndX < x + bodyW {
+                            cgCtx.saveGState()
+                            cgCtx.clip(to: CGRect(x: fillEndX, y: iconY, width: bodyW - (fillEndX - x), height: batteryH))
+                            (pctText as NSString).draw(at: textOrigin, withAttributes: [.font: pctFont, .foregroundColor: fillColor])
+                            cgCtx.restoreGState()
+                        }
+                    }
 
                     actualIconW = batteryW
                 } else if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?
-                    .withSymbolConfiguration(self.iconConfig) {
+                    .withSymbolConfiguration(self.iconConfig.applying(NSImage.SymbolConfiguration(paletteColors: [.labelColor]))) {
                     let rawSize = iconImage.size
                     let drawW: CGFloat
                     let drawH: CGFloat

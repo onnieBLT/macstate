@@ -273,7 +273,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
                     // Fill and text colors adapt to dark/light mode
                     let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                    let fillColor: NSColor = isDark ? .white : .black
+                    let fillColor: NSColor = isDark ? .white : NSColor(white: 0.5, alpha: 1.0)
                     let textColor: NSColor = isDark ? .black : .white
 
                     let pct = CGFloat(max(0, min(100, self.pendingBatteryPercent))) / 100.0

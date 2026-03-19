@@ -271,25 +271,30 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     NSColor.labelColor.setFill()
                     capPath.fill()
 
-                    // Fill and text colors adapt to dark/light mode
                     let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                    let fillColor: NSColor = isDark ? .white : NSColor(white: 0.5, alpha: 1.0)
-                    let textColor: NSColor = isDark ? .black : .white
+                    let depleteColor: NSColor = NSColor(white: 0.82, alpha: 1)
+                    let textColor: NSColor = isDark ? NSColor(white: 0.45, alpha: 1) : .white
 
                     let pct = CGFloat(max(0, min(100, self.pendingBatteryPercent))) / 100.0
-                    let inset: CGFloat = lineW + 0.5
+                    let inset: CGFloat = 0
                     let fillMaxW = bodyW - inset * 2
                     let fillW = fillMaxW * pct
+                    let innerRect = NSRect(x: x + inset, y: iconY + inset, width: fillMaxW, height: batteryH - inset * 2)
+
+                    // Depleted area (light gray, fills right up to the border)
+                    let depletePath = NSBezierPath(roundedRect: innerRect, xRadius: 3, yRadius: 3)
+                    depleteColor.setFill()
+                    depletePath.fill()
+
+                    // Charged area (labelColor, same as outline)
                     if fillW > 0 {
                         let fillRect = NSRect(x: x + inset, y: iconY + inset, width: fillW, height: batteryH - inset * 2)
-                        let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2)
-                        fillColor.setFill()
+                        let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 3, yRadius: 3)
+                        NSColor.labelColor.setFill()
                         fillPath.fill()
                     }
 
-                    // Percentage number: split rendering so text is always readable.
-                    // Over filled area → textColor (contrasts with fill).
-                    // Over unfilled area → fillColor (contrasts with background).
+                    // Percentage number in single contrasting color
                     let pctText = "\(self.pendingBatteryPercent)"
                     let pctFont = NSFont.monospacedDigitSystemFont(ofSize: round(batteryH * 0.80), weight: .bold)
                     let textSize = (pctText as NSString).size(withAttributes: [.font: pctFont])
@@ -297,23 +302,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                         x: x + (bodyW - textSize.width) / 2,
                         y: iconY + (batteryH - textSize.height) / 2
                     )
-                    let fillEndX = x + inset + fillW
-                    if let cgCtx = NSGraphicsContext.current?.cgContext {
-                        // Over filled area
-                        if fillW > 0 {
-                            cgCtx.saveGState()
-                            cgCtx.clip(to: CGRect(x: x, y: iconY, width: fillEndX - x, height: batteryH))
-                            (pctText as NSString).draw(at: textOrigin, withAttributes: [.font: pctFont, .foregroundColor: textColor])
-                            cgCtx.restoreGState()
-                        }
-                        // Over unfilled area
-                        if fillEndX < x + bodyW {
-                            cgCtx.saveGState()
-                            cgCtx.clip(to: CGRect(x: fillEndX, y: iconY, width: bodyW - (fillEndX - x), height: batteryH))
-                            (pctText as NSString).draw(at: textOrigin, withAttributes: [.font: pctFont, .foregroundColor: fillColor])
-                            cgCtx.restoreGState()
-                        }
-                    }
+                    (pctText as NSString).draw(at: textOrigin, withAttributes: [.font: pctFont, .foregroundColor: textColor])
 
                     actualIconW = batteryW
                 } else if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?

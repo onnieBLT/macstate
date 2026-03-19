@@ -177,7 +177,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
             var actualIconW = iconSize
             if iconName == "_battery_custom_" {
-                actualIconW = 25  // bodyW(22) + capW(3)
+                actualIconW = 22 + 3  // batteryBodyW + batteryCapW, must match drawing code
             } else if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?
                 .withSymbolConfiguration(iconConfig) {
                 let rawSize = iconImage.size
